@@ -1,0 +1,25 @@
+[
+    {
+      "id": 1,
+      "title": "Campera Bomber",
+      "description": "Campera estilo bomber para el invierno",
+      "code": "CAMBOM001",
+      "price": 12000,
+      "status": true,
+      "stock": 50,
+      "category": "Ropa",
+      "thumbnails": ["https://m.media-amazon.com/images/I/41WavII-WlL._AC_.jpg"]
+    },
+    {
+      "id": 2,
+      "title": "Pantalón Jeans",
+      "description": "Pantalón de jeans clásico",
+      "code": "PANT001",
+      "price": 8000,
+      "status": true,
+      "stock": 100,
+      "category": "Ropa",
+      "thumbnails": ["https://hmuruguay.vtexassets.com/arquivos/ids/2139836-483-725?v=638387286132570000&width=483&height=725&aspect=true"]
+    }
+  ]
+  

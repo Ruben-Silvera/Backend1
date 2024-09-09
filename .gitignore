@@ -1,13 +1,2 @@
 # Ignorar la carpeta node_modules
 node_modules/
-
-# Ignorar archivos de logs
-*.log
-
-# Ignorar archivos de configuración de sistema
-.DS_Store
-.env
-
-# Ignorar otros archivos generados
-*.tmp
-*.swp

@@ -1,82 +1,65 @@
 import express from 'express';
-import fs from 'fs';
-import path from 'path';
+import { body, validationResult } from 'express-validator';
+import Product from '../models/Product.js';
 
 const router = express.Router();
-const productsFilePath = path.resolve('data', 'productos.json');
-let products = [];
-let nextId = 1;
 
-if (fs.existsSync(productsFilePath)) {
-    const data = fs.readFileSync(productsFilePath, 'utf-8');
-    products = JSON.parse(data);
-    nextId = products.length ? Math.max(products.map(p => p.id)) + 1 : 1;
-}
-
-const saveProductsToFile = () => {
-    fs.writeFileSync(productsFilePath, JSON.stringify(products, null, 2));
-};
-
-
-router.get('/', (req, res) => {
-    const { limit } = req.query;
-    const limitedProducts = limit ? products.slice(0, parseInt(limit)) : products;
-    res.json(limitedProducts);
-});
-
-
-router.get('/:pid', (req, res) => {
-    const product = products.find(p => p.id === parseInt(req.params.pid));
-    if (!product) return res.status(404).json({ message: 'Producto no encontrado' });
-    res.json(product);
-});
-
-
-router.post('/', (req, res) => {
-    const { title, description, code, price, status = true, stock, category, thumbnails = [] } = req.body;
-
-    if (!title || !description || !code || !price || !stock || !category) {
-        return res.status(400).json({ message: 'Todos los campos son obligatorios, excepto thumbnails.' });
-    }
-
-    const newProduct = {
-        id: nextId++,
-        title,
-        description,
-        code,
-        price,
-        status,
-        stock,
-        category,
-        thumbnails
+router.get('/', async (req, res) => {
+    const { limit = 10, page = 1, query = '', sort } = req.query;
+    const options = {
+        limit: parseInt(limit),
+        skip: (page - 1) * limit,
     };
 
-    products.push(newProduct);
-    saveProductsToFile();
-    res.status(201).json(newProduct);
+    const filter = query ? { category: query } : {};
+    const products = await Product.find(filter, null, options);
+    const total = await Product.countDocuments(filter);
+
+    const totalPages = Math.ceil(total / limit);
+    res.json({
+        status: 'success',
+        payload: products,
+        totalPages,
+        prevPage: page > 1 ? page - 1 : null,
+        nextPage: page < totalPages ? page + 1 : null,
+        page: parseInt(page),
+        hasPrevPage: page > 1,
+        hasNextPage: page < totalPages,
+        prevLink: page > 1 ? `/api/products?limit=${limit}&page=${page - 1}` : null,
+        nextLink: page < totalPages ? `/api/products?limit=${limit}&page=${page + 1}` : null,
+    });
 });
 
-
-router.put('/:pid', (req, res) => {
-    const index = products.findIndex(p => p.id === parseInt(req.params.pid));
-    if (index === -1) return res.status(404).json({ message: 'Producto no encontrado' });
-
-    const updatedProduct = { ...products[index], ...req.body };
-    if (req.body.id) delete updatedProduct.id;
-
-    products[index] = updatedProduct;
-    saveProductsToFile();
-    res.json(updatedProduct);
+router.post('/', [
+    body('title').notEmpty().withMessage('El nombre es obligatorio'),
+    body('price').isNumeric().withMessage('El precio debe ser un número'),
+], async (req, res) => {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+        return res.status(400).json({ errors: errors.array() });
+    }
+    const newProduct = new Product(req.body);
+    await newProduct.save();
+    res.status(201).json({ message: 'Producto creado', product: newProduct });
 });
 
+router.put('/:pid', [
+    body('title').optional().notEmpty().withMessage('El nombre no puede estar vacío'),
+    body('price').optional().isNumeric().withMessage('El precio debe ser un número'),
+], async (req, res) => {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+        return res.status(400).json({ errors: errors.array() });
+    }
+    const product = await Product.findByIdAndUpdate(req.params.pid, req.body, { new: true });
+    if (!product) return res.status(404).json({ message: 'Producto no encontrado' });
+    res.json({ message: 'Producto actualizado', product });
+});
 
-router.delete('/:pid', (req, res) => {
-    const index = products.findIndex(p => p.id === parseInt(req.params.pid));
-    if (index === -1) return res.status(404).json({ message: 'Producto no encontrado' });
-
-    products.splice(index, 1);
-    saveProductsToFile();
-    res.status(204).end();
+router.delete('/:pid', async (req, res) => {
+    const product = await Product.findByIdAndDelete(req.params.pid);
+    if (!product) return res.status(404).json({ message: 'Producto no encontrado' });
+    res.json({ message: 'Producto eliminado' });
 });
 
 export default router;
